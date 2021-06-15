@@ -5,11 +5,14 @@ TagManager:
   serializedVersion: 2
   tags:
   - Boundary
+  - Trails
+  - ClosedTrail
+  - OpenedTrail
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - BoundaryForLine
   - Water
   - UI
   - 

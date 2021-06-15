@@ -16,6 +16,21 @@ public class PlayerController : MonoBehaviour
 
     private float swipingInSeconds = 0.1f;
 
+    private Rigidbody rigidbody;
+
+    private TrailManager trailManager;
+
+    private float speed = 100;
+
+    private int playerGoingToRight;
+
+    private void Awake()
+    {
+        rigidbody = GetComponent<Rigidbody>();
+
+        trailManager = GameObject.FindGameObjectWithTag("Trails").GetComponent<TrailManager>();
+    }
+
     private void Start()
     {
         playerDirection = PlayerDirection.None;
@@ -24,6 +39,10 @@ public class PlayerController : MonoBehaviour
     private void Update()
     {
         InputControl();
+    }
+
+    private void FixedUpdate()
+    {
         Movement();
     }
 
@@ -36,9 +55,6 @@ public class PlayerController : MonoBehaviour
             swipeFirstPosition.y = Input.mousePosition.y;
             swipeCoroutine = Swiping();
             StartCoroutine(swipeCoroutine);
-
-            if (playerDirection != PlayerDirection.None)
-                MoveToAppropriateTile();
         }
         if (Input.GetMouseButton(0) && swipe)
         {
@@ -102,37 +118,80 @@ public class PlayerController : MonoBehaviour
 
     private void HorizontalMovement(float direction)
     {
-        transform.Translate(new Vector3(direction, 0, 0) * Time.fixedDeltaTime);
+        rigidbody.velocity = new Vector3(direction, 0, 0) * Time.fixedDeltaTime * speed;
+        MoveToAppropriateTileInZ();
+
+        if (direction < 0)
+            playerGoingToRight--;
+        else
+            playerGoingToRight++;
     }
 
     private void VerticalMovement(float direction)
     {
-        transform.Translate(new Vector3(0, 0, direction) * Time.fixedDeltaTime);
+        rigidbody.velocity = new Vector3(0, 0, direction) * Time.fixedDeltaTime * speed;
+        MoveToAppropriateTileInX();
     }
 
-    private void MoveToAppropriateTile()
+    private void MoveToAppropriateTileInX()
     {
-        if(playerDirection == PlayerDirection.Forward || playerDirection == PlayerDirection.Backward)
+        Vector3 pos = transform.position;
+        pos.x = Mathf.Round(pos.x);
+
+        transform.position = pos;
+    }
+
+    private void MoveToAppropriateTileInZ()
+    {
+        Vector3 pos = transform.position;
+        pos.z = Mathf.Round(pos.z);
+
+        transform.position = pos;
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.gameObject.CompareTag("ClosedTrail"))
         {
-            transform.position = new Vector3(transform.position.x,
-                                             transform.position.y,
-                                             Mathf.Round(transform.position.z));
-            Debug.Log(transform.position.z);
-        }
-        else
-        {
-            transform.position = new Vector3(Mathf.Round(transform.position.x),
-                                             transform.position.y,
-                                             transform.position.z);
-            Debug.Log(transform.position.x);
+            var obj = other.gameObject;
+
+            trailManager.MakeTrailVisible(obj);
+
+            if (playerDirection == PlayerDirection.Forward || playerDirection == PlayerDirection.Backward || playerDirection == PlayerDirection.None)
+                trailManager.FillTrailsOpenedList(obj.transform.position);
         }
     }
+
+    //private void OnTriggerExit(Collider other)
+    //{
+    //    if (other.gameObject.CompareTag("OpenedTrail"))
+    //    {
+    //        if (playerDirection == PlayerDirection.Forward || playerDirection == PlayerDirection.Backward || playerDirection == PlayerDirection.None)
+    //            trailManager.FillTrailsOpenedList(other.gameObject.transform.position);
+    //        else if (playerDirection == PlayerDirection.Left || playerDirection == PlayerDirection.Right)
+    //            trailManager.RemoveInTrailsOpenedList(other.gameObject.transform.position);
+    //    }
+    //}
 
     private void OnCollisionEnter(Collision collision)
     {
         if (collision.gameObject.CompareTag("Boundary"))
         {
             playerDirection = PlayerDirection.None;
+            MoveToAppropriateTileInX();
+            MoveToAppropriateTileInZ();
+
+            FillTrailsBetween();
+
+            playerGoingToRight = 0;
         }
+    }
+
+    private void FillTrailsBetween()
+    {
+        if (playerGoingToRight > 0)
+            trailManager.FillTrailsBetweenLeftToRight();
+        else
+            trailManager.FillTrailsBetweenRightToLeft();
     }
 }
